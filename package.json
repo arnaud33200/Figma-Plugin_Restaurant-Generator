@@ -1,0 +1,18 @@
+{
+  "name": "restaurant_generator",
+  "version": "1.0.0",
+  "description": "Your Figma plugin",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.37.0",
+    "@types/node": "^16.11.1"
+  },
+  "dependencies": {
+    "request": "^2.88.2"
+  }
+}
