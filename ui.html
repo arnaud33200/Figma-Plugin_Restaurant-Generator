@@ -1,13 +1,13 @@
 <h2>Select Merchant</h2>
 
-  <p><select id="merchant_selector">
-  </select></p>
+<p><select id="merchant_selector">
+</select></p>
 
 <button id="apply_button">Apply Merchant</button>
 
 <script>
-
-parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
+  
+  parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
   
   document.getElementById('apply_button').onclick = () => {
     let selectElement = document.getElementById("merchant_selector");
@@ -24,7 +24,7 @@ parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
     if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
     if (eventData.type === 'download_image') { downloadImage(eventData.nodeId, eventData.url); }
   }
-
+  
   function populateMerchantDropDown(merchants) {
     let selectElement = document.getElementById("merchant_selector");
     merchants.forEach((merchant) => {
@@ -33,7 +33,7 @@ parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
       optionElement.innerHTML = merchant.name;
       selectElement.appendChild(optionElement);
     })
-
+    
   }
   
   function downloadImage(nodeId, url) {
@@ -41,12 +41,12 @@ parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
     let request = new XMLHttpRequest();
     request.open('GET', url);
     request.responseType = 'arraybuffer';
-
+    
     request.setRequestHeader('Content-Type', 'application/json');
-
+    
     // placehold.it
     // unsplash
-
+    
     request.onload = () => {
       let arraybuffer = request.response;
       let dataArray = new Uint8Array(arraybuffer)
@@ -62,5 +62,5 @@ parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
     };
     request.send(null);
   }
-
-</script>
+  
+</script> 
