@@ -33,7 +33,7 @@ let merchantCollection = new Map<string, Merchant>([
 		/* name */ "Pizza Pizza my dude",
 		/* cuisine */ "Pizza",
 		/* address */ "340 Front St W, Toronto, ON M5V 3W7",
-		/* coverUrl */ "https://lh3.googleusercontent.com/y5o7JGsPIesdipRCQV68qwDvdsw8VTuhUgtYxfYEUO-JfxSEA7F15uTQOM-6vy69qyWRBHXglBFuAd42R6Sc1kME4A"
+		/* coverUrl */ "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=781&q=80"
 		
 	)],
 	["merchant2", new Merchant(
@@ -41,14 +41,14 @@ let merchantCollection = new Map<string, Merchant>([
 		/* name */ "Frozen Sushi",
 		/* cuisine */ "japanese",
 		/* address */ "409 Richmond St W, Toronto, ON M5V 1X2",
-		/* coverUrl */ "https://images.indianexpress.com/2019/06/sushi-gettyimages-759.jpg"
+		/* coverUrl */ "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80"
 	)],
 	["merchant3", new Merchant(
 		/* id */ "merchant3",
 		/* name */ "Frasheee",
 		/* cuisine */ "Salad",
 		/* address */ "310 Richmond St W, Toronto, ON M5V 1X2",
-		/* coverUrl */ "https://www.recipetineats.com/wp-content/uploads/2021/08/Garden-Salad_48.jpg?resize=650,910"
+		/* coverUrl */ "https://images.unsplash.com/photo-1607532941433-304659e8198a?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1078&q=80"
 	)]
 ]);
 
@@ -127,15 +127,14 @@ function updateImageRectNode(rectNode: RectangleNode, dataMap: Map<string, strin
 
 	let rectId = refId;
 	refId = refId + 1;
-
 	cacheNodes.set(rectId, rectNode);
+	
 	figma.ui.postMessage({ 
 		type: 'download_image', 
 		nodeId: rectId, 
 		url: dataMap.get(rectNode.name) 
 	})
 }
-
 
 // ----------------------------------------------------------------
 
