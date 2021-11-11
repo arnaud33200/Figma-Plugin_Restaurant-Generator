@@ -1,9 +1,11 @@
-<h2>Select Merchant</h2>
+<p>Select a component, frame, group, or layer.</p>
+<!-- <p>Supported layer names: ‘restaurant’, ‘address’, ‘cuisine’, ‘image’</p> -->
 
-<p><select id="merchant_selector">
+<p><br><b>Use cuisine types</b></p>
+<p><select id="merchant_selector" class="restaurant-drop-selector">
 </select></p>
 
-<button id="apply_button">Apply Merchant</button>
+<button id="apply_button" class="main-button">Apply restaurant data</button>
 
 <script>
   
@@ -64,3 +66,43 @@
   }
   
 </script> 
+
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+<style>
+
+  :root {
+    --button-text-color: #ffffff;
+    --button-bg-color: #21292f;
+  }
+
+  p {
+    font-family: sans-serif;
+    margin-block-start: 2px;
+    margin-block-end: 2px;
+  }
+
+  error {
+    color: rgb(136, 0, 0);
+    margin-top: 20px;
+  }
+
+  .main-button {
+      width: -webkit-fill-available;
+      padding: 10px;
+      background-color: var(--button-bg-color);
+      color: var(--button-text-color);
+      border-radius: 5px;
+      margin-top: 10px;
+  }
+
+  .restaurant-drop-selector {
+    padding: 10px;
+    width: -webkit-fill-available;
+    border-radius: 5px;
+    margin-top: 10px;
+  }
+
+</style>
+
