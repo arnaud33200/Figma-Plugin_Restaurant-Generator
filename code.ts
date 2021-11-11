@@ -2,6 +2,7 @@
 // import * as importAll from "./script/test";
 
 figma.showUI(__html__);
+figma.ui.resize(350, 320);
 
 class Merchant {
 	constructor(
