@@ -7,12 +7,17 @@
 
 <button id="apply_button" class="main-button">Apply restaurant data</button>
 
+<div style="margin-top: 20px;">
+  <error id="error_message"></error>
+</div>
+
 <script>
   
   parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
   
   document.getElementById('apply_button').onclick = () => {
     let selectElement = document.getElementById("merchant_selector");
+    showErrorMessage("");
     parent.postMessage({ 
       pluginMessage: { 
         type: 'populate_merchant_node',
@@ -25,6 +30,7 @@
     let eventData = event.data.pluginMessage;
     if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
     if (eventData.type === 'download_image') { downloadImage(eventData.nodeId, eventData.url); }
+    if (eventData.type === 'error_message') { showErrorMessage(eventData.message); }
   }
   
   function populateMerchantDropDown(merchants) {
@@ -36,6 +42,10 @@
       selectElement.appendChild(optionElement);
     })
     
+  }
+
+  function showErrorMessage(message) {
+    document.getElementById('error_message').innerHTML = "<p>" + message + "</p>";
   }
   
   function downloadImage(nodeId, url) {

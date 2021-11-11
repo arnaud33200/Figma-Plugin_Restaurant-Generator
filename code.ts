@@ -55,6 +55,8 @@ let merchantCollection = new Map<string, Merchant>([
 // ################################################################################################
 // ################################################################################################
 
+var fieldMatches = new Set();
+
 figma.ui.onmessage = msg => {
 	if (msg.type === 'get_merchants') { postMessageListMerchant(); }
 	if (msg.type === 'populate_merchant_node') { populateComponent(msg.merchantId); }
@@ -80,19 +82,47 @@ function setImageRectangleNote(nodeId: number, data: Uint8Array) {
 }
 
 function populateComponent(merchantId: string) {
+	fieldMatches.clear();
+
 	let selectedMerchant = getMerchantWithId(merchantId);
 	let merchantDataMap = merchantToMap(selectedMerchant);
 
+	let selectedNodes = figma.currentPage.selection
+	if (selectedNodes.length == 0) {
+		postErrorMessage("Please select a Component or a Group before applying restaurant data.")
+		return
+	}
+
 	figma.currentPage.selection.forEach(selection => {
 		navigateThroughNodes(selection, node => {
-			if (node.type === "TEXT") {
-				updateTextNode(node as TextNode, merchantDataMap);
-			}
-			else if (node.type === "RECTANGLE") {
-				updateImageRectNode(node as RectangleNode, merchantDataMap);
-			}
+			checkNodeMapping(node, merchantDataMap)
 		}) 
 	})
+
+	if (fieldMatches.size == 0) {
+		var keysText = ""
+		merchantDataMap.forEach((value, key) => {
+			if (keysText.length > 0) { keysText += ", " }
+			keysText += key
+		});
+		let message = "Failed to apply restaurant data. The fields in the selected Component(s) or Group(s) should be renamed to the following options:<br><br>" + keysText
+		postErrorMessage(message)
+	}
+}
+
+function checkNodeMapping(node: SceneNode, dataMap: Map<string, string>) {
+	if (!dataMap.has(node.name)) {
+		return;
+	}
+
+	fieldMatches.add(node.name)
+
+	if (node.type === "TEXT") {
+		updateTextNode(node as  TextNode, dataMap);
+	}
+	else if (node.type === "RECTANGLE") {
+		updateImageRectNode(node as RectangleNode, dataMap);
+	}
 }
 
 function getMerchantWithId(merchantId: string): Merchant {
@@ -109,9 +139,6 @@ function merchantToMap(merchant: Merchant): Map<string, string> {
 }
 
 async function updateTextNode(textNode: TextNode, dataMap: Map<string, string>) {
-	if (!dataMap.has(textNode.name)) {
-		return;
-	}
 	const fonts = textNode.getRangeAllFontNames(0, textNode.characters.length);
 	for (const font of fonts) {
 		await figma.loadFontAsync(font);
@@ -121,10 +148,6 @@ async function updateTextNode(textNode: TextNode, dataMap: Map<string, string>) 
 }
 
 function updateImageRectNode(rectNode: RectangleNode, dataMap: Map<string, string>) {
-	if (!dataMap.has(rectNode.name)) {
-		return;
-	}
-
 	let rectId = refId;
 	refId = refId + 1;
 	cacheNodes.set(rectId, rectNode);
@@ -133,6 +156,13 @@ function updateImageRectNode(rectNode: RectangleNode, dataMap: Map<string, strin
 		type: 'download_image', 
 		nodeId: rectId, 
 		url: dataMap.get(rectNode.name) 
+	})
+}
+
+function postErrorMessage(text) {
+	figma.ui.postMessage({ 
+		type: 'error_message', 
+		message: text
 	})
 }
 
