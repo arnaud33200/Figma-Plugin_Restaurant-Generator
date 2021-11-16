@@ -60,7 +60,7 @@ var fieldMatches = new Set();
 
 figma.ui.onmessage = msg => {
 	if (msg.type === 'get_merchants') { postMessageListMerchant(); }
-	if (msg.type === 'populate_merchant_node') { populateComponent(msg.merchantId); }
+	if (msg.type === 'populate_merchant_node') { populateComponent(msg.merchantIds); }
 	else if (msg.type === 'on_image_data_response') { setImageRectangleNote(msg.nodeId, msg.data); }
 };
 
@@ -82,8 +82,11 @@ function setImageRectangleNote(nodeId: number, data: Uint8Array) {
 	node.fills = [{type: 'IMAGE', imageHash: figma.createImage(data).hash, scaleMode: "FILL"}];
 }
 
-function populateComponent(merchantId: string) {
+function populateComponent(merchantIds: Array<string>) {
 	fieldMatches.clear();
+
+	// TODO - setup action with mutiple ids (random, sequence, ...)
+	let merchantId = merchantIds[0]
 
 	let selectedMerchant = getMerchantWithId(merchantId);
 	let merchantDataMap = merchantToMap(selectedMerchant);

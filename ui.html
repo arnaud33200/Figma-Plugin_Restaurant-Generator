@@ -21,7 +21,8 @@
     parent.postMessage({ 
       pluginMessage: { 
         type: 'populate_merchant_node',
-        merchantId: selectElement.selectedOptions[0].value
+        // TODO - send list of selected merchants
+        merchantIds: [selectElement.selectedOptions[0].value]
       } 
     }, '*')
   }
