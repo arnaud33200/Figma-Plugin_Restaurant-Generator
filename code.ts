@@ -94,7 +94,7 @@ function populateComponent(merchantId: string) {
 		return
 	}
 
-	figma.currentPage.selection.forEach(selection => {
+	selectedNodes.forEach(selection => {
 		navigateThroughNodes(selection, node => {
 			checkNodeMapping(node, merchantDataMap)
 		}) 
@@ -173,10 +173,11 @@ function navigateThroughNodes(node: SceneNode, callback: (node: SceneNode) => vo
 	if (node == null) {
 		return;
 	}
-	
-	if (node.type === "INSTANCE" ||node.type === "COMPONENT" 
-	|| node.type === "COMPONENT_SET" || node.type === "GROUP") {
-		node.children.forEach(subNode => {
+
+	let children = node["children"] as Array<SceneNode>
+	debugger;
+	if (children != undefined && children.length > 0) {
+		children.forEach(subNode => {
 			navigateThroughNodes(subNode, callback);
 		});
 	} else {
