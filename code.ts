@@ -22,12 +22,6 @@ const DATA_FIELD_COVER = "[data-cover]";
 var refId = 0;
 let cacheNodes = new Map<number, SceneNode>()
 
-// this link works fine
-// "https://cdn-beaai.nitrocdn.com/DsHNrqyidSdrnEUwxpnDFmLjguAlTfrt/assets/static/optimized/rev-f639137/wp-content/uploads/2015/08/colorblind-test-image1.jpg"
-
-// this doesn't work
-// "https://www.recipetineats.com/wp-content/uploads/2020/05/Pepperoni-Pizza_5-SQjpg.jpg"
-
 let merchantCollection = new Map<string, Merchant>([
 	["merchant1", new Merchant(
 		/* id */ "merchant1",
