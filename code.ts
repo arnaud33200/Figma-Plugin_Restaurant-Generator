@@ -79,11 +79,13 @@ function setImageRectangleNote(nodeId: number, data: Uint8Array) {
 function populateComponent(merchantIds: Array<string>) {
 	fieldMatches.clear();
 
-	// TODO - setup action with mutiple ids (random, sequence, ...)
-	let merchantId = merchantIds[0]
+	if (merchantIds.length == 0) {
+		return; // nothing to map
+	}
 
-	let selectedMerchant = getMerchantWithId(merchantId);
-	let merchantDataMap = merchantToMap(selectedMerchant);
+	// TODO - setup action with mutiple ids (random, sequence, ...)
+	var selectedMerchantIndex = 0;
+	var merchantDataMap = new Map<string, string>([]);
 
 	let selectedNodes = figma.currentPage.selection
 	if (selectedNodes.length == 0) {
@@ -92,9 +94,18 @@ function populateComponent(merchantIds: Array<string>) {
 	}
 
 	selectedNodes.forEach(selection => {
-		navigateThroughNodes(selection, node => {
-			checkNodeMapping(node, merchantDataMap)
-		}) 
+		navigateThroughNodes(selection, 
+			() => {
+				// TODO - setup random or other depending on the action
+				selectedMerchantIndex = getRandomInt(merchantIds.length)
+
+				let merchantId = merchantIds[selectedMerchantIndex];
+				let selectedMerchant = getMerchantWithId(merchantId);
+				merchantDataMap = merchantToMap(selectedMerchant);
+			}, node => {
+				checkNodeMapping(node, merchantDataMap)
+			}
+		) 
 	})
 
 	if (fieldMatches.size == 0) {
@@ -166,7 +177,10 @@ function postErrorMessage(text) {
 
 // ----------------------------------------------------------------
 
-function navigateThroughNodes(node: SceneNode, callback: (node: SceneNode) => void) {
+function navigateThroughNodes(node: SceneNode, 
+	startRestaurantNodeCallback: () => void,
+	nodeCallback: (node: SceneNode) => void
+) {
 	if (node == null) {
 		return;
 	}
@@ -174,10 +188,17 @@ function navigateThroughNodes(node: SceneNode, callback: (node: SceneNode) => vo
 	let children = node["children"] as Array<SceneNode>
 	debugger;
 	if (children != undefined && children.length > 0) {
+		// TODO - check if node has a "[restaurant-node]" name and call callback
+		startRestaurantNodeCallback();
+
 		children.forEach(subNode => {
-			navigateThroughNodes(subNode, callback);
+			navigateThroughNodes(subNode, startRestaurantNodeCallback, nodeCallback);
 		});
 	} else {
-		callback(node);
+		nodeCallback(node);
 	}
+}
+
+function getRandomInt(max) {
+	return Math.floor(Math.random() * max);
 }

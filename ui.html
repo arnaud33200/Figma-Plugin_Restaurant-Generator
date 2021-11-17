@@ -1,9 +1,14 @@
 <p>Select a component, frame, group, or layer.</p>
 <!-- <p>Supported layer names: ‘restaurant’, ‘address’, ‘cuisine’, ‘image’</p> -->
 
+<!-- <p><input type="checkbox"> Test Test</p> -->
+
 <p style="margin-top: 15px;"><br><b>Use cuisine types</b></p>
-<p><select id="merchant_selector" class="restaurant-drop-selector">
-</select></p>
+
+<!-- <p><select id="merchant_selector" class="restaurant-drop-selector">
+</select></p> -->
+
+<div id="merchant_checkboxes" style="margin-top: 10px;"></div>
 
 <button id="apply_button" class="main-button">Apply restaurant data</button>
 
@@ -16,20 +21,23 @@
   parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
   
   document.getElementById('apply_button').onclick = () => {
-    let selectElement = document.getElementById("merchant_selector");
+    let restaurantIds = getSelectedRestaurantIds();
+    // let selectElement = document.getElementById("merchant_selector");
+    // [selectElement.selectedOptions[0].value]
     showErrorMessage("");
     parent.postMessage({ 
       pluginMessage: { 
         type: 'populate_merchant_node',
         // TODO - send list of selected merchants
-        merchantIds: [selectElement.selectedOptions[0].value]
+        merchantIds: restaurantIds
       } 
     }, '*')
   }
   
   onmessage = (event) => {
     let eventData = event.data.pluginMessage;
-    if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
+    // if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
+    if (eventData.type === 'merchants_response') { populateMerchantCheckBoxes(eventData.merchants); }
     if (eventData.type === 'download_image') { downloadImage(eventData.nodeId, eventData.url); }
     if (eventData.type === 'error_message') { showErrorMessage(eventData.message); }
   }
@@ -42,7 +50,35 @@
       optionElement.innerHTML = merchant.name;
       selectElement.appendChild(optionElement);
     })
-    
+  }
+
+  function populateMerchantCheckBoxes(merchants) {
+    let checkboxDiv = document.getElementById("merchant_checkboxes");
+    merchants.forEach((merchant) => {
+      let checkBox = document.createElement("input");
+      checkBox.type = "checkbox";
+      checkBox.id = merchant.merchantId;
+
+      let restaurantLine = document.createElement("p");
+      restaurantLine.appendChild(checkBox);
+      restaurantLine.append(merchant.name);
+
+      checkboxDiv.appendChild(restaurantLine);
+    })
+  }
+
+  function getSelectedRestaurantIds() {
+    let checkboxDiv = document.getElementById("merchant_checkboxes");
+    let restaurantIds = [];
+
+    for (let i = 0; i < checkboxDiv.children.length; i++) {
+      let element = checkboxDiv.children[i];
+      let checkbox = element.children[0];
+      if (checkbox.checked) {
+        restaurantIds.push(checkbox.id);
+      }
+    }
+    return restaurantIds;
   }
   
   function showErrorMessage(message) {
@@ -57,14 +93,10 @@
     
     request.setRequestHeader('Content-Type', 'application/json');
     
-    // placehold.it
-    // unsplash
-    
     request.onload = () => {
       let arraybuffer = request.response;
       let dataArray = new Uint8Array(arraybuffer)
       
-      // debugger;
       parent.postMessage({ 
         pluginMessage: { 
           type: 'on_image_data_response',
