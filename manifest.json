@@ -2,9 +2,9 @@
   "name": "Restaurant Generator",
   "id": "1040477961904666099",
   "api": "1.0.0",
-  "main": "code.js",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
   "editorType": [
     "figma"
-  ],
-  "ui": "ui.html"
+  ]
 }
