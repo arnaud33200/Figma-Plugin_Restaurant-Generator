@@ -8,9 +8,10 @@ class Merchant {
 	constructor(
 		readonly merchantId: string,
 		readonly name: string, 
+		readonly category: string,
 		readonly cuisine: string,
 		readonly address: string,
-		readonly coverUrl: string
+		readonly imageUrl: string
 	) {}
 }
 
@@ -22,30 +23,10 @@ const DATA_FIELD_COVER = "[data-cover]";
 var refId = 0;
 let cacheNodes = new Map<number, SceneNode>()
 
-let merchantCollection = new Map<string, Merchant>([
-	["merchant1", new Merchant(
-		/* id */ "merchant1",
-		/* name */ "Pizza Pizza my dude",
-		/* cuisine */ "Pizza",
-		/* address */ "340 Front St W, Toronto, ON M5V 3W7",
-		/* coverUrl */ "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=781&q=80"
-		
-	)],
-	["merchant2", new Merchant(
-		/* id */ "merchant2",
-		/* name */ "Frozen Sushi",
-		/* cuisine */ "japanese",
-		/* address */ "409 Richmond St W, Toronto, ON M5V 1X2",
-		/* coverUrl */ "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80"
-	)],
-	["merchant3", new Merchant(
-		/* id */ "merchant3",
-		/* name */ "Frasheee",
-		/* cuisine */ "Salad",
-		/* address */ "310 Richmond St W, Toronto, ON M5V 1X2",
-		/* coverUrl */ "https://images.unsplash.com/photo-1607532941433-304659e8198a?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1078&q=80"
-	)]
-]);
+// Categorie --> list of merchant
+
+let merchantCollection = buildMerchantCollection();
+
 
 // ################################################################################################
 // ################################################################################################
@@ -143,7 +124,7 @@ function merchantToMap(merchant: Merchant): Map<string, string> {
 		[DATA_FIELD_NAME, merchant.name],
 		[DATA_FIELD_CUISINE, merchant.cuisine],
 		[DATA_FIELD_ADDRESS, merchant.address],
-		[DATA_FIELD_COVER, merchant.coverUrl],
+		[DATA_FIELD_COVER, merchant.imageUrl],
 	]);
 }
 
@@ -201,4 +182,75 @@ function navigateThroughNodes(node: SceneNode,
 
 function getRandomInt(max) {
 	return Math.floor(Math.random() * max);
+}
+
+function buildMerchantCollection() {
+	let merchantMap = new Map<string, Merchant>()
+	let jsonData = getMerchantJsonData()
+	jsonData.forEach(merchant => {
+		let merchantId = merchant.restaurantName
+		let category = merchant.restaurantCategory
+		let cuisine = merchant.cuisine.length > 0 ? merchant.cuisine[0] : ""
+		merchantMap.set(merchantId, new Merchant(
+			/* merchantId */ merchantId,
+			/* name */ merchant.restaurantName,
+			/* category */ category,
+			/* cuisine */ cuisine,
+			/* address */ merchant.address,
+			/* imageUrl */ merchant.restaurantImg
+		))
+	})
+	return merchantMap
+}
+
+function getMerchantJsonData() {
+	return [
+		{
+			restaurantCategory: "Coffee",
+			restaurantImg: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1742&q=80",
+			restaurantName: "Aroma Espresso Bar",
+			intersection: "(King/Peter)",
+			address: "452 King Street W",
+			cuisine: ["Healthy Eats", "Coffee"],
+			itemCategories: ["Most Popular", "Hot Drinks", "Breakfast", "Sandwiches", "Treats"],
+			item: ["Shakshuka", "Cheese Bureka", "Croissant", "Almond Croissant"],
+			itemDescriprion: ["Shots of our signature epsresso blend, topped with foamed milk."]
+		},
+		{
+			restaurantCategory: "Coffee",
+			restaurantImg: "https://images.unsplash.com/photo-1551887196-72e32bfc7bf3?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1329&q=80",
+			restaurantName: "Ethica Coffee Roasters",
+			intersection: "(Sterling/Perth)",
+			address: "15 Sterling Road",
+			cuisine: ["Sandwiches", "Coffee"],
+			itemCategories: ["Specials", "Beans", "Hot Coffee", "Sandwiches", "Bakery"],
+			item: ["Shakshuka", "Cheese Bureka", "Croissant", "Almond Croissant"],
+			itemDescriprion: ["Our signature bean blend roasted and pulled into a rich and complex shot of espresso."],
+			
+		},
+		{
+			restaurantCategory: "Sushi",
+			restaurantImg: "https://images.unsplash.com/photo-1607301406259-dfb186e15de8?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1811&q=80",
+			restaurantName: "Kibo Sushi",
+			intersection: "(Charlotte/King)",
+			address: "124 Charlotte Street",
+			cuisine: ["Sushi", "Japanese"],
+			itemCategories: ["Specials", "Beans", "Hot Coffee", "Sandwiches", "Bakery"],
+			item: ["Salmon Nigiri", "Butterfish Nigiri", "Aburi Salmon", "Salmon Sashimi"],
+			itemDescriprion: ["Blow torched salmon with yuzu mustard mayo, truffle oil. 6 pieces"],
+			
+		},
+		{
+			restaurantCategory: "Sushi",
+			restaurantImg: "https://images.unsplash.com/photo-1570780775848-bc1897788ce0?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80",
+			restaurantName: "Sho Izakaya",
+			intersection: "(Queen/Jameson)",
+			address: "1406 Queen Street",
+			cuisine: ["Sushi", "Japanese"],
+			itemCategories: ["Daily Specials", "Appetizers", "Ramen", "Udon", "Poke Bowls", "Rice Dishes"],
+			item: ["Hamachi Sashimi", "Salmon Poke Bowl", "Tuna Poke Bowl", "Sashimi Trio"],
+			itemDescriprion: ["Salmon, avocado, mango, poke sauce, mixed greens and rice."],
+			
+		},
+	]
 }
