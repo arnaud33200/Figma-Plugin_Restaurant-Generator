@@ -61,9 +61,38 @@ function publishCategoryNames() {
 }
 
 function setImageFillForNode(nodeId: number, data: Uint8Array) {
-	let node = cacheNodes.get(nodeId) as RectangleNode;
+	let node = cacheNodes.get(nodeId) as SceneNode;
 	cacheNodes.delete(nodeId)
-	node.fills = [{type: 'IMAGE', imageHash: figma.createImage(data).hash, scaleMode: "FILL"}];
+
+	let imageHash = figma.createImage(data).hash
+	let fills = getNodeFills(node)
+	let newFills: Array<Paint> = new Array()
+
+	var imageSet = false
+	for (let paint of fills) {
+		if (paint.type == "IMAGE" && imageSet == false) {
+			newFills.push(copyImagePaint(paint, imageHash))
+			imageSet = true
+		} else {
+			newFills.push(paint)
+		}
+	}
+	node["fills"] = newFills
+}
+
+function copyImagePaint(imagePaint: ImagePaint, imageHash: string): ImagePaint {
+	return {
+		type: "IMAGE",
+  		scaleMode: imagePaint.scaleMode,
+  		imageHash: imageHash,
+  		imageTransform: imagePaint.imageTransform,
+  		scalingFactor: imagePaint.scalingFactor,
+  		rotation: imagePaint.rotation,
+  		filters: imagePaint.filters,
+  		visible: imagePaint.visible,
+  		opacity: imagePaint.opacity,
+  		blendMode: imagePaint.blendMode,
+	}
 }
 
 function applySelectedCategory(category) {
@@ -130,7 +159,7 @@ function checkNodeMapping(node: SceneNode, dataMap: Map<string, string>) {
 }
 
 function isNodeImage(node: SceneNode): Boolean {
-	let fills = node["fills"] as Array<Paint>
+	let fills = getNodeFills(node)
 	if (fills == undefined || fills.length == 0) {
 		return false
 	}
@@ -142,6 +171,14 @@ function isNodeImage(node: SceneNode): Boolean {
 	}
 	
 	return false
+}
+
+function getNodeFills(node: SceneNode): Array<Paint> {
+	let fills = node["fills"] as Array<Paint>
+	if (fills == undefined) {
+		return new Array()
+	}
+	return fills
 }
 
 function getRestaurantWithId(restaurantId: string): Restaurant {
