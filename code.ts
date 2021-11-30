@@ -1,12 +1,9 @@
-// Doesn't work :/
-// import * as importAll from "./script/test";
-
 figma.showUI(__html__);
 figma.ui.resize(350, 320);
 
-class Merchant {
+class Restaurant {
 	constructor(
-		readonly merchantId: string,
+		readonly restaurantId: string,
 		readonly name: string, 
 		readonly category: string,
 		readonly cuisine: string,
@@ -23,7 +20,7 @@ const DATA_FIELD_COVER = "[data-cover]";
 var refId = 0;
 let cacheNodes = new Map<number, SceneNode>()
 
-let merchantCollection = buildMerchantCollection()
+let restaurantMap = buildRestaurantMap()
 let categoryMap = buildCategoryMap()
 
 // ################################################################################################
@@ -32,26 +29,26 @@ let categoryMap = buildCategoryMap()
 var fieldMatches = new Set();
 
 figma.ui.onmessage = msg => {
-	if (msg.type === 'get_merchants') { postMessageListMerchant(); }
-	if (msg.type === 'get_categories') { postMessageListCategory(); }
-	if (msg.type === 'populate_merchant_node') { populateComponent(msg.merchantIds); }
+	if (msg.type === 'get_restaurants') { publishRestaurants(); }
+	if (msg.type === 'get_categories') { publishCategoryNames(); }
+	if (msg.type === 'populate_restaurant_node') { populateComponent(msg.restaurantIds); }
 	if (msg.type === 'apply_selected_category') { applySelectedCategory(msg.category); }
 	else if (msg.type === 'on_image_data_response') { setImageRectangleNote(msg.nodeId, msg.data); }
 };
 
-function postMessageListMerchant() {
-	let merchants = [];
-	merchantCollection.forEach(element => {
-		merchants.push(element)
+function publishRestaurants() {
+	let restaurants = [];
+	restaurantMap.forEach(element => {
+		restaurants.push(element)
 	})
 
 	figma.ui.postMessage({ 
-		type: 'merchants_response', 
-		merchants: merchants
+		type: 'restaurants_response', 
+		restaurants: restaurants
 	})
 }
 
-function postMessageListCategory() {
+function publishCategoryNames() {
 	let categories = []
 	categoryMap.forEach((restaurants, category) => {
 		categories.push(category)
@@ -74,16 +71,16 @@ function applySelectedCategory(category) {
 	populateComponent(restaurants)
 }
 
-function populateComponent(merchantIds: Array<string>) {
+function populateComponent(restaurantIds: Array<string>) {
 	fieldMatches.clear();
 
-	if (merchantIds.length == 0) {
+	if (restaurantIds.length == 0) {
 		return; // nothing to map
 	}
 
 	// TODO - setup action with mutiple ids (random, sequence, ...)
-	var selectedMerchantIndex = 0;
-	var merchantDataMap = new Map<string, string>([]);
+	var selectedRestaurantIndex = 0;
+	var restaurantFieldMap = new Map<string, string>([]);
 
 	let selectedNodes = figma.currentPage.selection
 	if (selectedNodes.length == 0) {
@@ -95,20 +92,20 @@ function populateComponent(merchantIds: Array<string>) {
 		navigateThroughNodes(selection, 
 			() => {
 				// TODO - setup random or other depending on the action
-				selectedMerchantIndex = getRandomInt(merchantIds.length)
+				selectedRestaurantIndex = getRandomInt(restaurantIds.length)
 
-				let merchantId = merchantIds[selectedMerchantIndex];
-				let selectedMerchant = getMerchantWithId(merchantId);
-				merchantDataMap = merchantToMap(selectedMerchant);
+				let restaurantId = restaurantIds[selectedRestaurantIndex];
+				let selectedRestaurant = getRestaurantWithId(restaurantId);
+				restaurantFieldMap = restaurantToFieldMap(selectedRestaurant);
 			}, node => {
-				checkNodeMapping(node, merchantDataMap)
+				checkNodeMapping(node, restaurantFieldMap)
 			}
 		) 
 	})
 
 	if (fieldMatches.size == 0) {
 		var keysText = ""
-		merchantDataMap.forEach((value, key) => {
+		restaurantFieldMap.forEach((value, key) => {
 			if (keysText.length > 0) { keysText += ", " }
 			keysText += key
 		});
@@ -132,16 +129,16 @@ function checkNodeMapping(node: SceneNode, dataMap: Map<string, string>) {
 	}
 }
 
-function getMerchantWithId(merchantId: string): Merchant {
-	return merchantCollection.get(merchantId)
+function getRestaurantWithId(restaurantId: string): Restaurant {
+	return restaurantMap.get(restaurantId)
 }
 
-function merchantToMap(merchant: Merchant): Map<string, string> {
+function restaurantToFieldMap(restaurant: Restaurant): Map<string, string> {
 	return new Map<string, string>([
-		[DATA_FIELD_NAME, merchant.name],
-		[DATA_FIELD_CUISINE, merchant.cuisine],
-		[DATA_FIELD_ADDRESS, merchant.address],
-		[DATA_FIELD_COVER, merchant.imageUrl],
+		[DATA_FIELD_NAME, restaurant.name],
+		[DATA_FIELD_CUISINE, restaurant.cuisine],
+		[DATA_FIELD_ADDRESS, restaurant.address],
+		[DATA_FIELD_COVER, restaurant.imageUrl],
 	]);
 }
 
@@ -201,38 +198,38 @@ function getRandomInt(max) {
 	return Math.floor(Math.random() * max);
 }
 
-function buildMerchantCollection() {
-	let merchantMap = new Map<string, Merchant>()
-	let jsonData = getMerchantJsonData()
-	jsonData.forEach(merchant => {
-		let merchantId = merchant.restaurantName
-		let category = merchant.restaurantCategory
-		let cuisine = merchant.cuisine.length > 0 ? merchant.cuisine[0] : ""
-		merchantMap.set(merchantId, new Merchant(
-			/* merchantId */ merchantId,
-			/* name */ merchant.restaurantName,
+function buildRestaurantMap() {
+	let restaurantMap = new Map<string, Restaurant>()
+	let jsonData = getRestaurantsJsonData()
+	jsonData.forEach(restaurant => {
+		let restaurantId = restaurant.restaurantName
+		let category = restaurant.restaurantCategory
+		let cuisine = restaurant.cuisine.length > 0 ? restaurant.cuisine[0] : ""
+		restaurantMap.set(restaurantId, new Restaurant(
+			/* restaurantId */ restaurantId,
+			/* name */ restaurant.restaurantName,
 			/* category */ category,
 			/* cuisine */ cuisine,
-			/* address */ merchant.address,
-			/* imageUrl */ merchant.restaurantImg
+			/* address */ restaurant.address,
+			/* imageUrl */ restaurant.restaurantImg
 		))
 	})
-	return merchantMap
+	return restaurantMap
 }
 
 function buildCategoryMap() {
 	let categoryMap = new Map<string, string[]>()
-	merchantCollection.forEach(merchant => {
-		let category = merchant.category
+	restaurantMap.forEach(restaurant => {
+		let category = restaurant.category
 		let restaurants = categoryMap.has(category) ? categoryMap.get(category) : new Array()
 		// debugger
-		restaurants.push(merchant.merchantId)
+		restaurants.push(restaurant.restaurantId)
 		categoryMap.set(category, restaurants)
 	})
 	return categoryMap
 }
 
-function getMerchantJsonData() {
+function getRestaurantsJsonData() {
 	return [
 		{
 			restaurantCategory: "Coffee",

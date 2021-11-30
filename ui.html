@@ -5,13 +5,13 @@
 
 <p style="margin-top: 15px;"><br><b>Use cuisine types</b></p>
 
-<!-- <p><select id="merchant_selector" class="restaurant-drop-selector">
+<!-- <p><select id="restaurant_selector" class="restaurant-drop-selector">
 </select></p> -->
 
 <p><select id="category_selector" class="restaurant-drop-selector">
 </select></p>
 
-<div id="merchant_checkboxes" style="margin-top: 10px;"></div>
+<!-- <div id="restaurant_checkboxes" style="margin-top: 10px;"></div> -->
 
 <button id="apply_button" class="main-button">Apply restaurant data</button>
 
@@ -21,7 +21,7 @@
 
 <script>
   
-  // parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
+  // parent.postMessage({ pluginMessage: { type: 'get_restaurants' } }, '*')
   parent.postMessage({ pluginMessage: { type: 'get_categories' } }, '*')
   
   document.getElementById('apply_button').onclick = () => {
@@ -31,8 +31,7 @@
   
   onmessage = (event) => {
     let eventData = event.data.pluginMessage;
-    // if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
-    if (eventData.type === 'merchants_response') { populateMerchantCheckBoxes(eventData.merchants); }
+    if (eventData.type === 'restaurants_response') { populateRestaurantCheckBoxes(eventData.restaurants); }
     if (eventData.type === 'categories_response') { populateCategoryDropDown(eventData.categories); }
     
     if (eventData.type === 'download_image') { downloadImage(eventData.nodeId, eventData.url); }
@@ -52,22 +51,20 @@
 
   function applySelectedMRestaurants() {
     let restaurantIds = getSelectedRestaurantIds();
-    // let selectElement = document.getElementById("merchant_selector");
-    // [selectElement.selectedOptions[0].value] 
     parent.postMessage({ 
       pluginMessage: { 
-        type: 'populate_merchant_node',
-        merchantIds: restaurantIds
+        type: 'populate_restaurant_node',
+        restaurantIds: restaurantIds
       } 
     }, '*')
   }
   
-  function populateMerchantDropDown(merchants) {
-    let selectElement = document.getElementById("merchant_selector");
-    merchants.forEach((merchant) => {
+  function populateRestaurantDropDown(restaurants) {
+    let selectElement = document.getElementById("restaurant_selector");
+    restaurants.forEach((restaurant) => {
       let optionElement = document.createElement("option");
-      optionElement.value = merchant.merchantId;
-      optionElement.innerHTML = merchant.name;
+      optionElement.value = restaurant.restaurantId;
+      optionElement.innerHTML = restaurant.name;
       selectElement.appendChild(optionElement);
     })
   }
@@ -82,23 +79,23 @@
     })
   }
 
-  function populateMerchantCheckBoxes(merchants) {
-    let checkboxDiv = document.getElementById("merchant_checkboxes");
-    merchants.forEach((merchant) => {
+  function populateRestaurantCheckBoxes(restaurants) {
+    let checkboxDiv = document.getElementById("restaurant_checkboxes");
+    restaurants.forEach((restaurant) => {
       let checkBox = document.createElement("input");
       checkBox.type = "checkbox";
-      checkBox.id = merchant.merchantId;
+      checkBox.id = restaurant.restaurantId;
 
       let restaurantLine = document.createElement("p");
       restaurantLine.appendChild(checkBox);
-      restaurantLine.append(merchant.name);
+      restaurantLine.append(restaurant.name);
 
       checkboxDiv.appendChild(restaurantLine);
     })
   }
 
   function getSelectedRestaurantIds() {
-    let checkboxDiv = document.getElementById("merchant_checkboxes");
+    let checkboxDiv = document.getElementById("restaurant_checkboxes");
     let restaurantIds = [];
 
     for (let i = 0; i < checkboxDiv.children.length; i++) {
