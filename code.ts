@@ -33,7 +33,7 @@ figma.ui.onmessage = msg => {
 	if (msg.type === 'get_categories') { publishCategoryNames(); }
 	if (msg.type === 'populate_restaurant_node') { populateComponent(msg.restaurantIds); }
 	if (msg.type === 'apply_selected_category') { applySelectedCategory(msg.category); }
-	else if (msg.type === 'on_image_data_response') { setImageRectangleNote(msg.nodeId, msg.data); }
+	else if (msg.type === 'on_image_data_response') { setImageFillForNode(msg.nodeId, msg.data); }
 };
 
 function publishRestaurants() {
@@ -60,7 +60,7 @@ function publishCategoryNames() {
 	})
 }
 
-function setImageRectangleNote(nodeId: number, data: Uint8Array) {
+function setImageFillForNode(nodeId: number, data: Uint8Array) {
 	let node = cacheNodes.get(nodeId) as RectangleNode;
 	cacheNodes.delete(nodeId)
 	node.fills = [{type: 'IMAGE', imageHash: figma.createImage(data).hash, scaleMode: "FILL"}];
@@ -124,9 +124,24 @@ function checkNodeMapping(node: SceneNode, dataMap: Map<string, string>) {
 	if (node.type === "TEXT") {
 		updateTextNode(node as  TextNode, dataMap);
 	}
-	else if (node.type === "RECTANGLE") {
-		updateImageRectNode(node as RectangleNode, dataMap);
+	else if (isNodeImage(node)) {
+		updateImageNode(node, dataMap);
 	}
+}
+
+function isNodeImage(node: SceneNode): Boolean {
+	let fills = node["fills"] as Array<Paint>
+	if (fills == undefined || fills.length == 0) {
+		return false
+	}
+
+	for(let paint of fills) {
+		if (paint.type == "IMAGE") {
+			return true
+		}
+	}
+	
+	return false
 }
 
 function getRestaurantWithId(restaurantId: string): Restaurant {
@@ -151,15 +166,15 @@ async function updateTextNode(textNode: TextNode, dataMap: Map<string, string>) 
 	textNode.characters = dataMap.get(textNode.name); 
 }
 
-function updateImageRectNode(rectNode: RectangleNode, dataMap: Map<string, string>) {
-	let rectId = refId;
+function updateImageNode(node: SceneNode, dataMap: Map<string, string>) {
+	let nodeId = refId;
 	refId = refId + 1;
-	cacheNodes.set(rectId, rectNode);
+	cacheNodes.set(nodeId, node);
 	
 	figma.ui.postMessage({ 
 		type: 'download_image', 
-		nodeId: rectId, 
-		url: dataMap.get(rectNode.name) 
+		nodeId: nodeId, 
+		url: dataMap.get(node.name) 
 	})
 }
 
@@ -181,7 +196,6 @@ function navigateThroughNodes(node: SceneNode,
 	}
 
 	let children = node["children"] as Array<SceneNode>
-	debugger;
 	if (children != undefined && children.length > 0) {
 		// TODO - check if node has a "[restaurant-node]" name and call callback
 		startRestaurantNodeCallback();

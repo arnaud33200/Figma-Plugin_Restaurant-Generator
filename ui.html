@@ -40,7 +40,6 @@
 
   function applySelectedCategory() {
     let selectedCategory = document.getElementById("category_selector").selectedOptions[0].value;
-    debugger
     parent.postMessage({ 
       pluginMessage: { 
         type: 'apply_selected_category',
