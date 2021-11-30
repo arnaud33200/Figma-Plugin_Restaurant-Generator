@@ -8,6 +8,9 @@
 <!-- <p><select id="merchant_selector" class="restaurant-drop-selector">
 </select></p> -->
 
+<p><select id="category_selector" class="restaurant-drop-selector">
+</select></p>
+
 <div id="merchant_checkboxes" style="margin-top: 10px;"></div>
 
 <button id="apply_button" class="main-button">Apply restaurant data</button>
@@ -18,28 +21,45 @@
 
 <script>
   
-  parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
+  // parent.postMessage({ pluginMessage: { type: 'get_merchants' } }, '*')
+  parent.postMessage({ pluginMessage: { type: 'get_categories' } }, '*')
   
   document.getElementById('apply_button').onclick = () => {
-    let restaurantIds = getSelectedRestaurantIds();
-    // let selectElement = document.getElementById("merchant_selector");
-    // [selectElement.selectedOptions[0].value]
     showErrorMessage("");
-    parent.postMessage({ 
-      pluginMessage: { 
-        type: 'populate_merchant_node',
-        // TODO - send list of selected merchants
-        merchantIds: restaurantIds
-      } 
-    }, '*')
+    applySelectedCategory()
   }
   
   onmessage = (event) => {
     let eventData = event.data.pluginMessage;
     // if (eventData.type === 'merchants_response') { populateMerchantDropDown(eventData.merchants); }
     if (eventData.type === 'merchants_response') { populateMerchantCheckBoxes(eventData.merchants); }
+    if (eventData.type === 'categories_response') { populateCategoryDropDown(eventData.categories); }
+    
     if (eventData.type === 'download_image') { downloadImage(eventData.nodeId, eventData.url); }
     if (eventData.type === 'error_message') { showErrorMessage(eventData.message); }
+  }
+
+  function applySelectedCategory() {
+    let selectedCategory = document.getElementById("category_selector").selectedOptions[0].value;
+    debugger
+    parent.postMessage({ 
+      pluginMessage: { 
+        type: 'apply_selected_category',
+        category: selectedCategory
+      } 
+    }, '*')
+  }
+
+  function applySelectedMRestaurants() {
+    let restaurantIds = getSelectedRestaurantIds();
+    // let selectElement = document.getElementById("merchant_selector");
+    // [selectElement.selectedOptions[0].value] 
+    parent.postMessage({ 
+      pluginMessage: { 
+        type: 'populate_merchant_node',
+        merchantIds: restaurantIds
+      } 
+    }, '*')
   }
   
   function populateMerchantDropDown(merchants) {
@@ -48,6 +68,16 @@
       let optionElement = document.createElement("option");
       optionElement.value = merchant.merchantId;
       optionElement.innerHTML = merchant.name;
+      selectElement.appendChild(optionElement);
+    })
+  }
+
+  function populateCategoryDropDown(categories) {
+    let selectElement = document.getElementById("category_selector");
+    categories.forEach((category) => {
+      let optionElement = document.createElement("option");
+      optionElement.value = category;
+      optionElement.innerHTML = category;
       selectElement.appendChild(optionElement);
     })
   }
