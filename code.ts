@@ -12,6 +12,20 @@ class Restaurant {
 	) {}
 }
 
+interface DataMapping { }
+
+class TextMapping implements DataMapping {
+	constructor(
+		readonly text: string
+	) {}
+}
+
+class ImageMapping implements DataMapping {
+	constructor(
+		readonly imageUrl: string
+	) {}
+}
+
 const DATA_FIELD_NAME = "[data-name]";
 const DATA_FIELD_CUISINE = "[data-cuisine]";
 const DATA_FIELD_ADDRESS = "[data-address]";
@@ -109,7 +123,7 @@ function populateComponent(restaurantIds: Array<string>) {
 
 	// TODO - setup action with mutiple ids (random, sequence, ...)
 	var selectedRestaurantIndex = 0;
-	var restaurantFieldMap = new Map<string, string>([]);
+	var restaurantFieldMap = new Map<string, DataMapping>();
 
 	let selectedNodes = figma.currentPage.selection
 	if (selectedNodes.length == 0) {
@@ -143,19 +157,19 @@ function populateComponent(restaurantIds: Array<string>) {
 	}
 }
 
-function checkNodeMapping(node: SceneNode, dataMap: Map<string, string>) {
+function checkNodeMapping(node: SceneNode, dataMap: Map<string, DataMapping>) {
 	if (!dataMap.has(node.name)) {
 		return;
 	}
+	let dataMapping = dataMap.get(node.name)
+	if (dataMapping instanceof TextMapping && node.type === "TEXT") {
+		updateTextNode(node as  TextNode, dataMapping as TextMapping);
+	}
+	else if (dataMapping instanceof ImageMapping && isNodeImage(node)) {
+		updateImageNode(node, dataMapping as ImageMapping);
+	}
 
 	fieldMatches.add(node.name)
-
-	if (node.type === "TEXT") {
-		updateTextNode(node as  TextNode, dataMap);
-	}
-	else if (isNodeImage(node)) {
-		updateImageNode(node, dataMap);
-	}
 }
 
 function isNodeImage(node: SceneNode): Boolean {
@@ -185,25 +199,25 @@ function getRestaurantWithId(restaurantId: string): Restaurant {
 	return restaurantMap.get(restaurantId)
 }
 
-function restaurantToFieldMap(restaurant: Restaurant): Map<string, string> {
-	return new Map<string, string>([
-		[DATA_FIELD_NAME, restaurant.name],
-		[DATA_FIELD_CUISINE, restaurant.cuisine],
-		[DATA_FIELD_ADDRESS, restaurant.address],
-		[DATA_FIELD_COVER, restaurant.imageUrl],
+function restaurantToFieldMap(restaurant: Restaurant): Map<string, DataMapping> {
+	return new Map<string, DataMapping>([
+		[DATA_FIELD_NAME, new TextMapping(restaurant.name)],
+		[DATA_FIELD_CUISINE, new TextMapping(restaurant.cuisine)],
+		[DATA_FIELD_ADDRESS, new TextMapping(restaurant.address)],
+		[DATA_FIELD_COVER, new ImageMapping(restaurant.imageUrl)],
 	]);
 }
 
-async function updateTextNode(textNode: TextNode, dataMap: Map<string, string>) {
+async function updateTextNode(textNode: TextNode, TextMapping: TextMapping) {
 	const fonts = textNode.getRangeAllFontNames(0, textNode.characters.length);
 	for (const font of fonts) {
 		await figma.loadFontAsync(font);
 	}
 	
-	textNode.characters = dataMap.get(textNode.name); 
+	textNode.characters = TextMapping.text; 
 }
 
-function updateImageNode(node: SceneNode, dataMap: Map<string, string>) {
+function updateImageNode(node: SceneNode, imageMapping: ImageMapping) {
 	let nodeId = refId;
 	refId = refId + 1;
 	cacheNodes.set(nodeId, node);
@@ -211,7 +225,7 @@ function updateImageNode(node: SceneNode, dataMap: Map<string, string>) {
 	figma.ui.postMessage({ 
 		type: 'download_image', 
 		nodeId: nodeId, 
-		url: dataMap.get(node.name) 
+		url: imageMapping.imageUrl 
 	})
 }
 
