@@ -70,6 +70,12 @@
 
   function populateCategoryDropDown(categories) {
     let selectElement = document.getElementById("category_selector");
+
+    let optionElement = document.createElement("option");
+    optionElement.value = "";
+      optionElement.innerHTML = "Any restaurant";
+      selectElement.appendChild(optionElement);
+
     categories.forEach((category) => {
       let optionElement = document.createElement("option");
       optionElement.value = category;

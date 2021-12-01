@@ -142,7 +142,12 @@ function copyImagePaint(imagePaint: ImagePaint, imageHash: string): ImagePaint {
 }
 
 function applySelectedCategory(category) {
-	let restaurants = categoryMap.get(category)
+	let restaurants = new Array()
+	categoryMap.forEach((value, key) => {
+		if (key == category || category == "") {
+			restaurants.push(...value)
+		}
+	})
 	populateComponent(restaurants)
 }
 
