@@ -166,12 +166,7 @@ function populateComponent(restaurantIds: Array<string>) {
 	selectedNodes.forEach(selection => {
 		navigateThroughNodes(selection, 
 			() => {
-				// TODO - setup random or other depending on the action
-				selectedRestaurantIndex = getRandomInt(restaurantIds.length)
-
-				let restaurantId = restaurantIds[selectedRestaurantIndex];
-				let selectedRestaurant = getRestaurantWithId(restaurantId);
-				restaurantFieldMap = restaurantToFieldMap(selectedRestaurant);
+				restaurantFieldMap = generateRandomRestaurantFieldMap(restaurantIds)
 			}, node => {
 				checkNodeMapping(node, restaurantFieldMap)
 			}
@@ -180,13 +175,21 @@ function populateComponent(restaurantIds: Array<string>) {
 
 	if (fieldMatches.size == 0) {
 		var keysText = ""
+		restaurantFieldMap = generateRandomRestaurantFieldMap(restaurantIds)
 		restaurantFieldMap.forEach((value, key) => {
 			if (keysText.length > 0) { keysText += ", " }
-			keysText += key
+			keysText += "<b>" + key + "</b>"
 		});
-		let message = "Failed to apply restaurant data. The fields in the selected Component(s) or Group(s) should be renamed to the following options:<br><br>" + keysText
+		let message = "Failed to apply restaurant data. The root Component(s) or Group(s) should be rename <b>[restaurant-object]</b>, The fields inside should be renamed to the following options:<br><br>" + keysText
 		postErrorMessage(message)
 	}
+}
+
+function generateRandomRestaurantFieldMap(restaurantIds: string[]): Map<string, DataMapping> {
+	let selectedRestaurantIndex = getRandomInt(restaurantIds.length)
+	let restaurantId = restaurantIds[selectedRestaurantIndex];
+	let selectedRestaurant = getRestaurantWithId(restaurantId);
+	return restaurantToFieldMap(selectedRestaurant);
 }
 
 function checkNodeMapping(node: SceneNode, dataMap: Map<string, DataMapping>) {
@@ -271,8 +274,9 @@ function navigateThroughNodes(node: SceneNode,
 
 	let children = node["children"] as Array<SceneNode>
 	if (children != undefined && children.length > 0) {
-		// TODO - check if node has a "[restaurant-node]" name and call callback
-		startRestaurantNodeCallback();
+		if (node.name == DATA_FIELD_OBJECT) {
+			startRestaurantNodeCallback();
+		}
 
 		children.forEach(subNode => {
 			navigateThroughNodes(subNode, startRestaurantNodeCallback, nodeCallback);
