@@ -4,20 +4,57 @@ figma.ui.resize(350, 320);
 class Restaurant {
 	constructor(
 		readonly restaurantId: string,
-		readonly name: string, 
+		readonly name: string,
+		readonly imageUrl: string, 
 		readonly category: string,
-		readonly cuisine: string,
 		readonly address: string,
-		readonly imageUrl: string
+		readonly intersection: string,
+		readonly cuisines: string[],
+		readonly itemCategories: string[],
+		readonly itemNames: string[],
+		readonly itemDescriptions: string[],
 	) {}
 }
 
 interface DataMapping { }
 
-class TextMapping implements DataMapping {
+abstract class TextMapping implements DataMapping { 
+	readonly abstract text: string
+}
+
+class SingleTextMapping extends TextMapping {
 	constructor(
 		readonly text: string
-	) {}
+	) {
+		super();
+	}
+}
+
+class RandomTextMapping extends TextMapping {
+	constructor(
+		private readonly texts: string[]
+	) { 
+		super();
+	}
+
+	private randomQueue = new Array()
+	public get text() {
+		if (this.texts.length == 0) {
+			return ""
+		}
+		
+		if (this.randomQueue.length >= this.texts.length) {
+			this.randomQueue.splice(0, 1)
+		}
+
+		var randomIndex = 0
+		do {
+			randomIndex = Math.floor(Math.random() * this.texts.length)
+		} while (this.randomQueue.find(index => index == randomIndex) != undefined)
+	
+		this.randomQueue.push(randomIndex)
+		return this.texts[randomIndex]
+	}
 }
 
 class ImageMapping implements DataMapping {
@@ -25,11 +62,6 @@ class ImageMapping implements DataMapping {
 		readonly imageUrl: string
 	) {}
 }
-
-const DATA_FIELD_NAME = "[data-name]";
-const DATA_FIELD_CUISINE = "[data-cuisine]";
-const DATA_FIELD_ADDRESS = "[data-address]";
-const DATA_FIELD_COVER = "[data-cover]";
 
 var refId = 0;
 let cacheNodes = new Map<number, SceneNode>()
@@ -199,15 +231,6 @@ function getRestaurantWithId(restaurantId: string): Restaurant {
 	return restaurantMap.get(restaurantId)
 }
 
-function restaurantToFieldMap(restaurant: Restaurant): Map<string, DataMapping> {
-	return new Map<string, DataMapping>([
-		[DATA_FIELD_NAME, new TextMapping(restaurant.name)],
-		[DATA_FIELD_CUISINE, new TextMapping(restaurant.cuisine)],
-		[DATA_FIELD_ADDRESS, new TextMapping(restaurant.address)],
-		[DATA_FIELD_COVER, new ImageMapping(restaurant.imageUrl)],
-	]);
-}
-
 async function updateTextNode(textNode: TextNode, TextMapping: TextMapping) {
 	const fonts = textNode.getRangeAllFontNames(0, textNode.characters.length);
 	for (const font of fonts) {
@@ -269,14 +292,17 @@ function buildRestaurantMap() {
 	jsonData.forEach(restaurant => {
 		let restaurantId = restaurant.restaurantName
 		let category = restaurant.restaurantCategory
-		let cuisine = restaurant.cuisine.length > 0 ? restaurant.cuisine[0] : ""
 		restaurantMap.set(restaurantId, new Restaurant(
 			/* restaurantId */ restaurantId,
 			/* name */ restaurant.restaurantName,
+			/* imageUrl */ restaurant.restaurantImg,
 			/* category */ category,
-			/* cuisine */ cuisine,
 			/* address */ restaurant.address,
-			/* imageUrl */ restaurant.restaurantImg
+			/* intersection */ restaurant.intersection,
+			/* cuisines */ restaurant.cuisine,
+			/* itemCategories */ restaurant.itemCategories,
+			/* itemNames */ restaurant.item,
+			/* itemDescriptions */ restaurant.itemDescriprion
 		))
 	})
 	return restaurantMap
@@ -294,6 +320,29 @@ function buildCategoryMap() {
 	return categoryMap
 }
 
+const DATA_FIELD_OBJECT = "[restaurant-object]" // top of tree
+const DATA_FIELD_NAME = "[restaurant-name]" // single name
+const DATA_FIELD_ADDRESS = "[restaurant-address]" // single name
+const DATA_FIELD_CUISINE = "[restaurant-cuisine]" // array of strings
+const DATA_FIELD_COVER = "[restaurant-cover]" // (single image
+const DATA_FIELD_INTERSECTION = "[restaurant-intersection]" // single string
+const DATA_FIELD_MENU_CATEGORY = "[restaurant-menu-category]" // array of strings
+const DATA_FIELD_MENU_ITEM = "[restaurant-menu-item]" // array of strings
+const DATA_FIELD_MENU_DESCRIPTION = "[restaurant-menu-description]" // array of strings
+
+function restaurantToFieldMap(restaurant: Restaurant): Map<string, DataMapping> {
+	return new Map<string, DataMapping>([
+		[DATA_FIELD_NAME, new SingleTextMapping(restaurant.name)],
+		[DATA_FIELD_ADDRESS, new SingleTextMapping(restaurant.address)],
+		[DATA_FIELD_INTERSECTION, new SingleTextMapping(restaurant.address)],
+		[DATA_FIELD_COVER, new ImageMapping(restaurant.imageUrl)],
+		[DATA_FIELD_CUISINE, new RandomTextMapping(restaurant.cuisines)],
+		[DATA_FIELD_MENU_DESCRIPTION, new RandomTextMapping(restaurant.itemDescriptions)],
+		[DATA_FIELD_MENU_CATEGORY, new RandomTextMapping(restaurant.itemCategories)],
+		[DATA_FIELD_MENU_ITEM, new RandomTextMapping(restaurant.itemDescriptions)],
+	]);
+}
+
 function getRestaurantsJsonData() {
 	return [
 		{
@@ -302,7 +351,7 @@ function getRestaurantsJsonData() {
 			restaurantName: "Aroma Espresso Bar",
 			intersection: "(King/Peter)",
 			address: "452 King Street W",
-			cuisine: ["Healthy Eats", "Coffee"],
+			cuisine: ["Healthy Eats", "Coffee", "Tea", "Desert"],
 			itemCategories: ["Most Popular", "Hot Drinks", "Breakfast", "Sandwiches", "Treats"],
 			item: ["Shakshuka", "Cheese Bureka", "Croissant", "Almond Croissant"],
 			itemDescriprion: ["Shots of our signature epsresso blend, topped with foamed milk."]
@@ -313,7 +362,7 @@ function getRestaurantsJsonData() {
 			restaurantName: "Ethica Coffee Roasters",
 			intersection: "(Sterling/Perth)",
 			address: "15 Sterling Road",
-			cuisine: ["Sandwiches", "Coffee"],
+			cuisine: ["Sandwiches", "Coffee", "Breakfast", "Goodies"],
 			itemCategories: ["Specials", "Beans", "Hot Coffee", "Sandwiches", "Bakery"],
 			item: ["Shakshuka", "Cheese Bureka", "Croissant", "Almond Croissant"],
 			itemDescriprion: ["Our signature bean blend roasted and pulled into a rich and complex shot of espresso."],
