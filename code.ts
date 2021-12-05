@@ -16,13 +16,34 @@ class Restaurant {
 	) {}
 }
 
-interface DataMapping { }
-
-abstract class TextMapping implements DataMapping { 
-	readonly abstract text: string
+class MenuItem {
+	constructor(
+		readonly name: string,
+		readonly description: string,
+	) {}
 }
 
-class SingleTextMapping extends TextMapping {
+interface DataNodeBinder { 
+	bindNode(node: SceneNode)
+}
+
+abstract class TextNodeBinder implements DataNodeBinder { 
+	readonly abstract text: string
+
+	public async bindNode(node: TextNode) {
+		if (node.type != "TEXT") {
+			return
+		}
+		const fonts = node.getRangeAllFontNames(0, node.characters.length);
+		for (const font of fonts) {
+			await figma.loadFontAsync(font);
+		}
+		
+		node.characters = this.text; 
+	}
+}
+
+class SingleTextNodeBinder extends TextNodeBinder {
 	constructor(
 		readonly text: string
 	) {
@@ -30,7 +51,7 @@ class SingleTextMapping extends TextMapping {
 	}
 }
 
-class RandomTextMapping extends TextMapping {
+class RandomTextNodeBinder extends TextNodeBinder {
 	constructor(
 		private readonly texts: string[]
 	) { 
@@ -57,10 +78,41 @@ class RandomTextMapping extends TextMapping {
 	}
 }
 
-class ImageMapping implements DataMapping {
+class ImageUrlNodeBinder implements DataNodeBinder {
 	constructor(
 		readonly imageUrl: string
 	) {}
+
+	public bindNode(node: SceneNode) {
+		if (!this.isNodeImage(node)) {
+			return
+		}
+
+		let nodeId = refId;
+		refId = refId + 1;
+		cacheNodes.set(nodeId, node);
+		
+		figma.ui.postMessage({ 
+			type: 'download_image', 
+			nodeId: nodeId, 
+			url: this.imageUrl 
+		})
+	}
+
+	private isNodeImage(node: SceneNode): Boolean {
+		let fills = getNodeFills(node)
+		if (fills == undefined || fills.length == 0) {
+			return false
+		}
+	
+		for(let paint of fills) {
+			if (paint.type == "IMAGE") {
+				return true
+			}
+		}
+		
+		return false
+	}
 }
 
 var refId = 0;
@@ -160,7 +212,7 @@ function populateComponent(restaurantIds: Array<string>) {
 
 	// TODO - setup action with mutiple ids (random, sequence, ...)
 	var selectedRestaurantIndex = 0;
-	var restaurantFieldMap = new Map<string, DataMapping>();
+	var dataNodeBinderMap = new Map<string, DataNodeBinder>();
 
 	let selectedNodes = figma.currentPage.selection
 	if (selectedNodes.length == 0) {
@@ -171,17 +223,21 @@ function populateComponent(restaurantIds: Array<string>) {
 	selectedNodes.forEach(selection => {
 		navigateThroughNodes(selection, 
 			() => {
-				restaurantFieldMap = generateRandomRestaurantFieldMap(restaurantIds)
+				dataNodeBinderMap = generateRandomRestaurantFieldMap(restaurantIds)
 			}, node => {
-				checkNodeMapping(node, restaurantFieldMap)
+				let dataNodeBinder = dataNodeBinderMap.get(node.name)
+				if (dataNodeBinder != undefined && dataNodeBinder != null) {
+					dataNodeBinder.bindNode(node)
+					fieldMatches.add(node.name)
+				} 
 			}
 		) 
 	})
 
 	if (fieldMatches.size == 0) {
 		var keysText = ""
-		restaurantFieldMap = generateRandomRestaurantFieldMap(restaurantIds)
-		restaurantFieldMap.forEach((value, key) => {
+		dataNodeBinderMap = generateRandomRestaurantFieldMap(restaurantIds)
+		dataNodeBinderMap.forEach((value, key) => {
 			if (keysText.length > 0) { keysText += ", " }
 			keysText += "<b>" + key + "</b>"
 		});
@@ -190,41 +246,11 @@ function populateComponent(restaurantIds: Array<string>) {
 	}
 }
 
-function generateRandomRestaurantFieldMap(restaurantIds: string[]): Map<string, DataMapping> {
+function generateRandomRestaurantFieldMap(restaurantIds: string[]): Map<string, DataNodeBinder> {
 	let selectedRestaurantIndex = getRandomInt(restaurantIds.length)
 	let restaurantId = restaurantIds[selectedRestaurantIndex];
 	let selectedRestaurant = getRestaurantWithId(restaurantId);
-	return restaurantToFieldMap(selectedRestaurant);
-}
-
-function checkNodeMapping(node: SceneNode, dataMap: Map<string, DataMapping>) {
-	if (!dataMap.has(node.name)) {
-		return;
-	}
-	let dataMapping = dataMap.get(node.name)
-	if (dataMapping instanceof TextMapping && node.type === "TEXT") {
-		updateTextNode(node as  TextNode, dataMapping as TextMapping);
-	}
-	else if (dataMapping instanceof ImageMapping && isNodeImage(node)) {
-		updateImageNode(node, dataMapping as ImageMapping);
-	}
-
-	fieldMatches.add(node.name)
-}
-
-function isNodeImage(node: SceneNode): Boolean {
-	let fills = getNodeFills(node)
-	if (fills == undefined || fills.length == 0) {
-		return false
-	}
-
-	for(let paint of fills) {
-		if (paint.type == "IMAGE") {
-			return true
-		}
-	}
-	
-	return false
+	return createDataNodeBinderMap(selectedRestaurant);
 }
 
 function getNodeFills(node: SceneNode): Array<Paint> {
@@ -237,27 +263,6 @@ function getNodeFills(node: SceneNode): Array<Paint> {
 
 function getRestaurantWithId(restaurantId: string): Restaurant {
 	return restaurantMap.get(restaurantId)
-}
-
-async function updateTextNode(textNode: TextNode, TextMapping: TextMapping) {
-	const fonts = textNode.getRangeAllFontNames(0, textNode.characters.length);
-	for (const font of fonts) {
-		await figma.loadFontAsync(font);
-	}
-	
-	textNode.characters = TextMapping.text; 
-}
-
-function updateImageNode(node: SceneNode, imageMapping: ImageMapping) {
-	let nodeId = refId;
-	refId = refId + 1;
-	cacheNodes.set(nodeId, node);
-	
-	figma.ui.postMessage({ 
-		type: 'download_image', 
-		nodeId: nodeId, 
-		url: imageMapping.imageUrl 
-	})
 }
 
 function postErrorMessage(text) {
@@ -339,16 +344,16 @@ const DATA_FIELD_MENU_CATEGORY = "[restaurant-menu-category]" // array of string
 const DATA_FIELD_MENU_ITEM = "[restaurant-menu-item]" // array of strings
 const DATA_FIELD_MENU_DESCRIPTION = "[restaurant-menu-description]" // array of strings
 
-function restaurantToFieldMap(restaurant: Restaurant): Map<string, DataMapping> {
-	return new Map<string, DataMapping>([
-		[DATA_FIELD_NAME, new SingleTextMapping(restaurant.name)],
-		[DATA_FIELD_ADDRESS, new SingleTextMapping(restaurant.address)],
-		[DATA_FIELD_INTERSECTION, new SingleTextMapping(restaurant.address)],
-		[DATA_FIELD_COVER, new ImageMapping(restaurant.imageUrl)],
-		[DATA_FIELD_CUISINE, new RandomTextMapping(restaurant.cuisines)],
-		[DATA_FIELD_MENU_DESCRIPTION, new RandomTextMapping(restaurant.itemDescriptions)],
-		[DATA_FIELD_MENU_CATEGORY, new RandomTextMapping(restaurant.itemCategories)],
-		[DATA_FIELD_MENU_ITEM, new RandomTextMapping(restaurant.itemDescriptions)],
+function createDataNodeBinderMap(restaurant: Restaurant): Map<string, DataNodeBinder> {
+	return new Map<string, DataNodeBinder>([
+		[DATA_FIELD_NAME, new SingleTextNodeBinder(restaurant.name)],
+		[DATA_FIELD_ADDRESS, new SingleTextNodeBinder(restaurant.address)],
+		[DATA_FIELD_INTERSECTION, new SingleTextNodeBinder(restaurant.address)],
+		[DATA_FIELD_COVER, new ImageUrlNodeBinder(restaurant.imageUrl)],
+		[DATA_FIELD_CUISINE, new RandomTextNodeBinder(restaurant.cuisines)],
+		[DATA_FIELD_MENU_CATEGORY, new RandomTextNodeBinder(restaurant.itemCategories)],
+		[DATA_FIELD_MENU_ITEM, new RandomTextNodeBinder(restaurant.itemNames)],
+		[DATA_FIELD_MENU_DESCRIPTION, new RandomTextNodeBinder(restaurant.itemDescriptions)]
 	]);
 }
 
