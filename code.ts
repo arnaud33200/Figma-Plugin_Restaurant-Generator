@@ -11,8 +11,7 @@ class Restaurant {
 		readonly intersection: string,
 		readonly cuisines: string[],
 		readonly itemCategories: string[],
-		readonly itemNames: string[],
-		readonly itemDescriptions: string[],
+		readonly menuItems: MenuItem[]
 	) {}
 }
 
@@ -28,7 +27,7 @@ interface DataNodeBinder {
 }
 
 abstract class TextNodeBinder implements DataNodeBinder { 
-	readonly abstract text: string
+	protected abstract getText(node: SceneNode): string
 
 	public async bindNode(node: TextNode) {
 		if (node.type != "TEXT") {
@@ -39,7 +38,7 @@ abstract class TextNodeBinder implements DataNodeBinder {
 			await figma.loadFontAsync(font);
 		}
 		
-		node.characters = this.text; 
+		node.characters = this.getText(node); 
 	}
 }
 
@@ -48,6 +47,35 @@ class SingleTextNodeBinder extends TextNodeBinder {
 		readonly text: string
 	) {
 		super();
+	}
+
+	protected getText(node: SceneNode): string {
+		return this.text
+	}
+}
+
+class IndexQueueRandomizer {
+
+	constructor(readonly length: number) { }
+
+	private randomQueue = new Array()
+
+	public getNextRandomIndex(): number {
+		if (this.length == 0) {
+			return 0
+		}
+		
+		if (this.randomQueue.length >= this.length) {
+			this.randomQueue.splice(0, 1)
+		}
+
+		var randomIndex = 0
+		do {
+			randomIndex = Math.floor(Math.random() * this.length)
+		} while (this.randomQueue.find(index => index == randomIndex) != undefined)
+	
+		this.randomQueue.push(randomIndex)
+		return randomIndex
 	}
 }
 
@@ -58,23 +86,46 @@ class RandomTextNodeBinder extends TextNodeBinder {
 		super();
 	}
 
-	private randomQueue = new Array()
-	public get text() {
+	protected indexQueueRandomizer = new IndexQueueRandomizer(this.texts.length)
+
+	protected getText(node: SceneNode): string {
 		if (this.texts.length == 0) {
 			return ""
 		}
 		
-		if (this.randomQueue.length >= this.texts.length) {
-			this.randomQueue.splice(0, 1)
-		}
-
-		var randomIndex = 0
-		do {
-			randomIndex = Math.floor(Math.random() * this.texts.length)
-		} while (this.randomQueue.find(index => index == randomIndex) != undefined)
-	
-		this.randomQueue.push(randomIndex)
+		let randomIndex = this.indexQueueRandomizer.getNextRandomIndex()
 		return this.texts[randomIndex]
+	}
+}
+
+class RadomMenuItemTextNodeBinder extends TextNodeBinder {
+	constructor(
+		readonly menuItems: MenuItem[],
+		readonly attributeSelector: (menuItem: MenuItem, node: SceneNode) => string
+	) { super() }
+
+	private menuItem: MenuItem = null
+	private indexQueueRandomizer = new IndexQueueRandomizer(this.menuItems.length)
+	private usedTextSet = new Set()
+
+	protected getText(node: SceneNode): string {
+		if (this.menuItem == null) {
+			this.populateNextRandomMenuItem()
+		}
+		var text = this.attributeSelector(this.menuItem, node)
+		debugger
+		if (this.usedTextSet.has(text)) {
+			this.populateNextRandomMenuItem()
+			text = this.attributeSelector(this.menuItem, node)
+		}
+		this.usedTextSet.add(text)
+		return text
+	}
+
+	private populateNextRandomMenuItem() {
+		let randomIndex = this.indexQueueRandomizer.getNextRandomIndex()
+		this.menuItem = this.menuItems[randomIndex]
+		this.usedTextSet.clear()
 	}
 }
 
@@ -306,6 +357,21 @@ function buildRestaurantMap() {
 	jsonData.forEach(restaurant => {
 		let restaurantId = restaurant.restaurantName
 		let category = restaurant.restaurantCategory
+
+		let menuItems = new Array<MenuItem>()
+		for (let i = 0; i < restaurant.items.length; i++) {
+			if ( i >= restaurant.itemDescription.length) {
+				break
+			}
+
+			menuItems.push(
+				new MenuItem(
+				/* name */ restaurant.items[i],
+				/* description */ restaurant.itemDescription[i],
+				)
+			)
+		  }
+
 		restaurantMap.set(restaurantId, new Restaurant(
 			/* restaurantId */ restaurantId,
 			/* name */ restaurant.restaurantName,
@@ -315,8 +381,7 @@ function buildRestaurantMap() {
 			/* intersection */ restaurant.intersection,
 			/* cuisines */ restaurant.cuisine,
 			/* itemCategories */ restaurant.itemCategories,
-			/* itemNames */ restaurant.items,
-			/* itemDescriptions */ restaurant.itemDescription
+			/* menuItems */ menuItems
 		))
 	})
 	return restaurantMap
@@ -345,6 +410,16 @@ const DATA_FIELD_MENU_ITEM = "[restaurant-menu-item]" // array of strings
 const DATA_FIELD_MENU_DESCRIPTION = "[restaurant-menu-description]" // array of strings
 
 function createDataNodeBinderMap(restaurant: Restaurant): Map<string, DataNodeBinder> {
+	let menuItemBinder = new RadomMenuItemTextNodeBinder(restaurant.menuItems, (menuItem, node) => {
+		if (node.name === DATA_FIELD_MENU_ITEM) {
+			return menuItem.name
+		}
+		if (node.name === DATA_FIELD_MENU_DESCRIPTION) {
+			return menuItem.description
+		}
+		menuItem.name
+	})
+
 	return new Map<string, DataNodeBinder>([
 		[DATA_FIELD_NAME, new SingleTextNodeBinder(restaurant.name)],
 		[DATA_FIELD_ADDRESS, new SingleTextNodeBinder(restaurant.address)],
@@ -352,12 +427,40 @@ function createDataNodeBinderMap(restaurant: Restaurant): Map<string, DataNodeBi
 		[DATA_FIELD_COVER, new ImageUrlNodeBinder(restaurant.imageUrl)],
 		[DATA_FIELD_CUISINE, new RandomTextNodeBinder(restaurant.cuisines)],
 		[DATA_FIELD_MENU_CATEGORY, new RandomTextNodeBinder(restaurant.itemCategories)],
-		[DATA_FIELD_MENU_ITEM, new RandomTextNodeBinder(restaurant.itemNames)],
-		[DATA_FIELD_MENU_DESCRIPTION, new RandomTextNodeBinder(restaurant.itemDescriptions)]
+		[DATA_FIELD_MENU_ITEM, menuItemBinder],
+		[DATA_FIELD_MENU_DESCRIPTION, menuItemBinder]
 	]);
 }
 
 function getRestaurantsJsonData() {
+	if (true) {
+		return [
+			{
+				restaurantCategory: "Coffee",
+				restaurantImg: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+				restaurantName: "Aroma Espresso Bar",
+				intersection: "(King/Peter)",
+				address: "452 King Street W",
+				cuisine: ["Healthy Eats", "Coffee"],
+				itemCategories: ["Most Popular", "Hot Drinks", "Breakfast", "Sandwiches", "Treats"],
+				items: ["Item 1","Item 2", "Items 3"],
+				itemDescription: ["Description 1", "Description 2", "Description 3"]
+			},
+		
+			{
+				restaurantCategory: "Coffee",
+				restaurantImg: "https://images.unsplash.com/photo-1516743619420-154b70a65fea?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
+				restaurantName: "Dineen Coffee Co.",
+				intersection: "(Yonge/Elm)",
+				address: "4578 Yonge Street",
+				cuisine: ["Bakery", "Coffee","Breakfast"],
+				itemCategories: ["Coffee", "Drinks", "Bakery", "Dessert", "Gifts"],
+				items: ["Item 1","Item 2", "Items 3"],
+				itemDescription: ["Description 1", "Description 2", "Description 3"]
+			},
+		]
+	}
+
 	return [
 		{
 			restaurantCategory: "Coffee",
