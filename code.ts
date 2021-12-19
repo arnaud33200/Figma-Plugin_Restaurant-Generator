@@ -9,9 +9,15 @@ class Restaurant {
 		readonly category: string,
 		readonly address: string,
 		readonly intersection: string,
-		readonly cuisines: string[],
-		readonly itemCategories: string[],
-		readonly menuItems: MenuItem[]
+		readonly cuisines: string[]
+	) {}
+}
+
+class MenuCategory {
+	constructor(
+		readonly restaurantCategory: string,
+		readonly name: string,
+		readonly items: MenuItem[]
 	) {}
 }
 
@@ -170,7 +176,8 @@ var refId = 0;
 let cacheNodes = new Map<number, SceneNode>()
 
 let restaurantMap = buildRestaurantMap()
-let categoryMap = buildCategoryMap()
+let restaurantForCategoryMap = buildRestaurantForCategoryMap()
+let menuCategoryforRestaurantCategoryMap: Map<string, MenuCategory[]> = buildMenuCatergoryMap()
 
 // ################################################################################################
 // ################################################################################################
@@ -199,7 +206,7 @@ function publishRestaurants() {
 
 function publishCategoryNames() {
 	let categories = []
-	categoryMap.forEach((restaurants, category) => {
+	restaurantForCategoryMap.forEach((restaurants, category) => {
 		categories.push(category)
 	})
 	
@@ -246,7 +253,7 @@ function copyImagePaint(imagePaint: ImagePaint, imageHash: string): ImagePaint {
 
 function applySelectedCategory(category) {
 	let restaurants = new Array()
-	categoryMap.forEach((value, key) => {
+	restaurantForCategoryMap.forEach((value, key) => {
 		if (key == category || category == "") {
 			restaurants.push(...value)
 		}
@@ -264,6 +271,7 @@ function populateComponent(restaurantIds: Array<string>) {
 	// TODO - setup action with mutiple ids (random, sequence, ...)
 	var selectedRestaurantIndex = 0;
 	var dataNodeBinderMap = new Map<string, DataNodeBinder>();
+	var selectedRestaurant: Restaurant = null
 
 	let selectedNodes = figma.currentPage.selection
 	if (selectedNodes.length == 0) {
@@ -273,9 +281,24 @@ function populateComponent(restaurantIds: Array<string>) {
 
 	selectedNodes.forEach(selection => {
 		navigateThroughNodes(selection, 
-			() => {
-				dataNodeBinderMap = generateRandomRestaurantFieldMap(restaurantIds)
-			}, node => {
+			(rootType: NodeRootType) => {
+				let pickedRestaurant = selectedRestaurant == null ? pickRandomRestaurant(restaurantIds) : selectedRestaurant
+				switch (rootType) {
+					case NodeRootType.RESTAURANT: {
+						let newPickedRestaurant = pickRandomRestaurant(restaurantIds)
+						selectedRestaurant = newPickedRestaurant
+						mergeDataNodeBinderMaps(generateRandomRestaurantFieldMap(newPickedRestaurant), dataNodeBinderMap)
+						break
+					}
+					case NodeRootType.CATEGORY: {
+						let categoryBinderMap = generateRandomMenuCategoryBinderMap(pickedRestaurant)
+						mergeDataNodeBinderMaps(categoryBinderMap, dataNodeBinderMap)
+						debugger
+						break
+					}
+				}
+			}, 
+			node => {
 				let dataNodeBinder = dataNodeBinderMap.get(node.name)
 				if (dataNodeBinder != undefined && dataNodeBinder != null) {
 					dataNodeBinder.bindNode(node)
@@ -287,7 +310,8 @@ function populateComponent(restaurantIds: Array<string>) {
 
 	if (fieldMatches.size == 0) {
 		var keysText = ""
-		dataNodeBinderMap = generateRandomRestaurantFieldMap(restaurantIds)
+		let pickedRestaurant = selectedRestaurant == null ? pickRandomRestaurant(restaurantIds) : selectedRestaurant
+		dataNodeBinderMap = generateRandomRestaurantFieldMap(pickedRestaurant)
 		dataNodeBinderMap.forEach((value, key) => {
 			if (keysText.length > 0) { keysText += ", " }
 			keysText += "<b>" + key + "</b>"
@@ -297,11 +321,31 @@ function populateComponent(restaurantIds: Array<string>) {
 	}
 }
 
-function generateRandomRestaurantFieldMap(restaurantIds: string[]): Map<string, DataNodeBinder> {
+function mergeDataNodeBinderMaps(fromMap: Map<string, DataNodeBinder>, toMap: Map<string, DataNodeBinder>) {
+	fromMap.forEach((value, key) => {
+		toMap.set(key, value)
+	});
+}
+
+function pickRandomRestaurant(restaurantIds: string[]): Restaurant {
 	let selectedRestaurantIndex = getRandomInt(restaurantIds.length)
 	let restaurantId = restaurantIds[selectedRestaurantIndex];
-	let selectedRestaurant = getRestaurantWithId(restaurantId);
+	return getRestaurantWithId(restaurantId);
+}
+
+function generateRandomRestaurantFieldMap(selectedRestaurant: Restaurant): Map<string, DataNodeBinder> {
 	return createDataNodeBinderMap(selectedRestaurant);
+}
+
+function generateRandomMenuCategoryBinderMap(restaurant: Restaurant): Map<string, DataNodeBinder> {
+	let categories = menuCategoryforRestaurantCategoryMap.get(restaurant.category)
+	if (categories == undefined || categories == null) {
+		return new Map()
+	}
+
+	let selectedCategoryIndex = getRandomInt(categories.length)
+	let category = categories[selectedCategoryIndex]
+	return createMenuCategoryNodeDataNodeBinder(category)
 }
 
 function getNodeFills(node: SceneNode): Array<Paint> {
@@ -325,8 +369,10 @@ function postErrorMessage(text) {
 
 // ----------------------------------------------------------------
 
+enum NodeRootType { RESTAURANT, CATEGORY }
+
 function navigateThroughNodes(node: SceneNode, 
-	startRestaurantNodeCallback: () => void,
+	startRestaurantNodeCallback: (rootType: NodeRootType) => void,
 	nodeCallback: (node: SceneNode) => void
 ) {
 	if (node == null) {
@@ -336,7 +382,9 @@ function navigateThroughNodes(node: SceneNode,
 	let children = node["children"] as Array<SceneNode>
 	if (children != undefined && children.length > 0) {
 		if (node.name == DATA_FIELD_OBJECT) {
-			startRestaurantNodeCallback();
+			startRestaurantNodeCallback(NodeRootType.RESTAURANT);
+		} else if (node.name == DATA_FIELD_CATEGORY_OBJECT) {
+			startRestaurantNodeCallback(NodeRootType.CATEGORY);
 		}
 
 		children.forEach(subNode => {
@@ -358,20 +406,6 @@ function buildRestaurantMap() {
 		let restaurantId = restaurant.restaurantName
 		let category = restaurant.restaurantCategory
 
-		let menuItems = new Array<MenuItem>()
-		for (let i = 0; i < restaurant.items.length; i++) {
-			if ( i >= restaurant.itemDescription.length) {
-				break
-			}
-
-			menuItems.push(
-				new MenuItem(
-				/* name */ restaurant.items[i],
-				/* description */ restaurant.itemDescription[i],
-				)
-			)
-		  }
-
 		restaurantMap.set(restaurantId, new Restaurant(
 			/* restaurantId */ restaurantId,
 			/* name */ restaurant.restaurantName,
@@ -379,22 +413,38 @@ function buildRestaurantMap() {
 			/* category */ category,
 			/* address */ restaurant.address,
 			/* intersection */ restaurant.intersection,
-			/* cuisines */ restaurant.cuisine,
-			/* itemCategories */ restaurant.itemCategories,
-			/* menuItems */ menuItems
+			/* cuisines */ restaurant.cuisine
 		))
 	})
 	return restaurantMap
 }
 
-function buildCategoryMap() {
+function buildRestaurantForCategoryMap(): Map<string, string[]> {
 	let categoryMap = new Map<string, string[]>()
 	restaurantMap.forEach(restaurant => {
 		let category = restaurant.category
 		let restaurants = categoryMap.has(category) ? categoryMap.get(category) : new Array()
-		// debugger
 		restaurants.push(restaurant.restaurantId)
 		categoryMap.set(category, restaurants)
+	})
+	return categoryMap
+}
+
+function buildMenuCatergoryMap(): Map<string, MenuCategory[]> {
+	let categoryMap = new Map<string, MenuCategory[]>()
+	let jsonData = getCategoriesJsonData()
+	jsonData.forEach(category => {
+		let restaurantCategory = category.restaurantCategory
+		let categories = categoryMap.has(restaurantCategory) ? categoryMap.get(restaurantCategory) : []
+
+		categories.push(new MenuCategory(
+			restaurantCategory,
+			category.itemCategory,
+			category.items.map<MenuItem>(item => {
+				return new MenuItem(item.name, item.description)
+			})
+		))
+		categoryMap.set(restaurantCategory, categories)
 	})
 	return categoryMap
 }
@@ -405,12 +455,24 @@ const DATA_FIELD_ADDRESS = "[restaurant-address]" // single name
 const DATA_FIELD_CUISINE = "[restaurant-cuisine]" // array of strings
 const DATA_FIELD_COVER = "[restaurant-cover]" // (single image
 const DATA_FIELD_INTERSECTION = "[restaurant-intersection]" // single string
-const DATA_FIELD_MENU_CATEGORY = "[restaurant-menu-category]" // array of strings
+
+const DATA_FIELD_CATEGORY_OBJECT = "[category-object]" // top of tree
+const DATA_FIELD_MENU_CATEGORY = "[restaurant-menu-category]" // single string
 const DATA_FIELD_MENU_ITEM = "[restaurant-menu-item]" // array of strings
 const DATA_FIELD_MENU_DESCRIPTION = "[restaurant-menu-description]" // array of strings
 
 function createDataNodeBinderMap(restaurant: Restaurant): Map<string, DataNodeBinder> {
-	let menuItemBinder = new RadomMenuItemTextNodeBinder(restaurant.menuItems, (menuItem, node) => {
+	return new Map<string, DataNodeBinder>([
+		[DATA_FIELD_NAME, new SingleTextNodeBinder(restaurant.name)],
+		[DATA_FIELD_ADDRESS, new SingleTextNodeBinder(restaurant.address)],
+		[DATA_FIELD_INTERSECTION, new SingleTextNodeBinder(restaurant.address)],
+		[DATA_FIELD_COVER, new ImageUrlNodeBinder(restaurant.imageUrl)],
+		[DATA_FIELD_CUISINE, new RandomTextNodeBinder(restaurant.cuisines)],
+	]);
+}
+
+function createMenuCategoryNodeDataNodeBinder(menuCategory: MenuCategory) {
+	let menuItemBinder = new RadomMenuItemTextNodeBinder(menuCategory.items, (menuItem, node) => {
 		if (node.name === DATA_FIELD_MENU_ITEM) {
 			return menuItem.name
 		}
@@ -421,19 +483,79 @@ function createDataNodeBinderMap(restaurant: Restaurant): Map<string, DataNodeBi
 	})
 
 	return new Map<string, DataNodeBinder>([
-		[DATA_FIELD_NAME, new SingleTextNodeBinder(restaurant.name)],
-		[DATA_FIELD_ADDRESS, new SingleTextNodeBinder(restaurant.address)],
-		[DATA_FIELD_INTERSECTION, new SingleTextNodeBinder(restaurant.address)],
-		[DATA_FIELD_COVER, new ImageUrlNodeBinder(restaurant.imageUrl)],
-		[DATA_FIELD_CUISINE, new RandomTextNodeBinder(restaurant.cuisines)],
-		[DATA_FIELD_MENU_CATEGORY, new RandomTextNodeBinder(restaurant.itemCategories)],
+		[DATA_FIELD_MENU_CATEGORY, new SingleTextNodeBinder(menuCategory.name)],
 		[DATA_FIELD_MENU_ITEM, menuItemBinder],
 		[DATA_FIELD_MENU_DESCRIPTION, menuItemBinder]
 	]);
 }
 
-function getRestaurantsJsonData() {
+function getCategoriesJsonData() {
 	if (true) {
+		return [
+			{
+				restaurantCategory: "Coffee",
+				itemCategory: "Menu Category A",
+				items: [
+					{
+						name: "Item A - 1",
+						description: "Description A - 1"
+					},
+					{
+						name: "Item A - 2",
+						description: "Description A - 2"
+					},	
+				]
+			},
+			{
+				restaurantCategory: "Coffee",
+				itemCategory: "Menu Category B",
+				items: [
+					{
+						name: "Item B - 1",
+						description: "Description B - 1"
+					},
+					{
+						name: "Item B - 2",
+						description: "Description B - 2"
+					},	
+				]
+			} 
+		]
+	}
+	return [
+		{
+			restaurantCategory: "Coffee",
+			itemCategory: "Most Popular",
+			items: [
+				{
+					name: "Americano",
+					description: "Two long shots of espresso stretched with hot water. Made with fair trade organic beans. 12oz."
+				},
+				{
+					name: "Macchiato",
+					description: "Our decadent and warming latte, combined with rich chocolate flavour, steamed"
+				},	
+			]
+		},
+		{
+			restaurantCategory: "Sushi",
+			itemCategory: "Lunch Special",
+			items: [
+				{
+					name: "Americano",
+					description: "Two long shots of espresso stretched with hot water. Made with fair trade organic beans. 12oz."
+				},
+				{
+					name: "Macchiato",
+					description: "Our decadent and warming latte, combined with rich chocolate flavour, steamed"
+				},	
+			]
+		} 
+	]
+}
+
+function getRestaurantsJsonData() {
+	if (false) {
 		return [
 			{
 				restaurantCategory: "Coffee",
